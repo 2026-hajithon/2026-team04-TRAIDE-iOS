@@ -8,19 +8,32 @@
 import SwiftUI
 import FirebaseCore
 
-@main
-struct TRAIDEApp: App {
-    init() {
-        // 설정 파일이 없는 개발/프리뷰 빌드는 Firebase 없이 실행합니다.
-        if FirebaseApp.app() == nil,
-           Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") != nil {
-            FirebaseApp.configure()
-        }
-    }
+#if canImport(UIKit)
+import UIKit
 
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+// iOS/iPadOS: Use UIApplicationDelegate to configure Firebase
+class AppDelegate: NSObject, UIApplicationDelegate {
+  func application(_ application: UIApplication,
+                   didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+    FirebaseApp.configure()
+    return true
+  }
+}
+#endif
+
+@main
+struct YourApp: App {
+    @StateObject private var container = DIContainer()
+    
+  #if canImport(UIKit)
+  // register app delegate for Firebase setup on iOS/iPadOS
+  @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+  #endif
+
+  var body: some Scene {
+    WindowGroup {
+        RootView()
+            .environmentObject(container)
     }
+  }
 }

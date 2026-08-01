@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct LoginView: View {
-    @State private var id: String = ""
-    @State private var password: String = ""
+    @Environment(NavigationRouter.self) private var router
+    @EnvironmentObject private var container: DIContainer
+    @StateObject private var viewModel = LoginViewModel()
     
-    // ⭐️ 1. 텍스트 필드의 포커스 상태를 추적하기 위한 열거형 및 상태 변수 추가
     enum Field {
         case id, password
     }
@@ -22,24 +22,27 @@ struct LoginView: View {
             Spacer()
             
             // MARK: - 로고 영역
-            Text("TRAIDE")
-                .font(.system(size: 56, weight: .heavy, design: .default))
-                .foregroundStyle(Color(.customwhite))
-                .padding(.bottom, 60)
+            Image(.logo)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 159.32617, height: 56)
+                .tint(.customwhite)
+
+
             
             // MARK: - 입력 폼 영역
             VStack(spacing: 16) {
                 // 아이디 입력
-                TextField("아이디", text: $id)
-                    .focused($focusedField, equals: .id) // ⭐️ 2. 포커스 바인딩
+                TextField("아이디", text: $viewModel.loginId)
+                    .focused($focusedField, equals: .id)
                     .padding()
                     .background(Color(._200))
                     .cornerRadius(8)
-                    .foregroundStyle(Color(.customwhite))
+                    .foregroundStyle(Color(._500))
                 
                 // 비밀번호 입력
-                SecureField("비밀번호", text: $password)
-                    .focused($focusedField, equals: .password) // ⭐️ 3. 포커스 바인딩
+                SecureField("비밀번호", text: $viewModel.password)
+                    .focused($focusedField, equals: .password)
                     .padding()
                     .background(Color(._200))
                     .cornerRadius(8)
@@ -50,11 +53,11 @@ struct LoginView: View {
             // MARK: - 로그인 버튼
             MainBigButton(
                 text: "로그인",
-                isDisabled: id.isEmpty || password.isEmpty,
+                isDisabled: viewModel.loginId.isEmpty || viewModel.password.isEmpty || viewModel.isLoading,
                 action: {
-                    focusedField = nil // 버튼을 눌렀을 때도 키보드 내리기
-                    print("로그인 시도: \(id)")
-                    // TODO: 로그인 처리 로직 추가
+                    focusedField = nil
+                    
+                    viewModel.login()
                 }
             )
             .padding(.bottom, 24)
@@ -78,7 +81,7 @@ struct LoginView: View {
                     .foregroundStyle(Color(._500))
                 
                 Button(action: {
-                    print("회원가입 화면(온보딩)으로 이동")
+                    router.push(.onboarding)
                 }) {
                     Text("회원가입")
                         .font(.pretendardMedium(14))
@@ -91,9 +94,30 @@ struct LoginView: View {
         }
         .padding(.horizontal, 20)
         .background(Color(._100).ignoresSafeArea())
-        // ⭐️ 4. 빈 배경을 탭했을 때 포커스를 해제(nil)하여 키보드를 내립니다.
         .onTapGesture {
             focusedField = nil
+        }
+        // MARK: - 로딩 오버레이
+        .overlay {
+            if viewModel.isLoading {
+                Color.black.opacity(0.2)
+                    .ignoresSafeArea()
+                ProgressView()
+                    .tint(.white)
+            }
+        }
+        // MARK: - 에러 알림창
+        .alert("알림", isPresented: $viewModel.showError) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
+        }
+        // MARK: - 로그인 성공 처리
+        .onChange(of: viewModel.isLoginSuccessful) { _, isSuccess in
+            if isSuccess {
+                container.selectedTab = .home
+                router.replace(with: .home)
+            }
         }
     }
 }
@@ -101,4 +125,6 @@ struct LoginView: View {
 // MARK: - 프리뷰
 #Preview {
     LoginView()
+        .environment(NavigationRouter())
+        .environmentObject(DIContainer())
 }

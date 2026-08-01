@@ -7,58 +7,52 @@
 
 import SwiftUI
 
-/// 앱 루트 탭뷰.
-
 struct MainTabView: View {
-    @State private var selectedTab: TabItem = .home
-    private let chatViewModel: ChatViewModel
-
-    init(chatViewModel: ChatViewModel = .preview) {
-        self.chatViewModel = chatViewModel
-    }
-
+    @EnvironmentObject var container: DIContainer
+    
     var body: some View {
-        TabView(selection: $selectedTab) {
-            
-            MateView()
-                .tag(TabItem.mate)
-                .tabItem {
-                    Image(systemName: "person.2.fill")
-                    
-                    Text("메이트")
-                    
+        ZStack(alignment: .bottom) {
+            TabView(selection: $container.selectedTab) {
+                ForEach(TabItem.allCases, id: \.rawValue) { tab in
+                    // 커스텀 이미지가 아닌 시스템 아이콘(SF Symbols)을 사용할 때는 systemImage 파라미터를 사용합니다.
+                    Tab(
+                        "",
+                        systemImage: getIconName(for: tab, isSelected: container.selectedTab == tab),
+                        value: tab,
+                        content: {
+                            tabView(tab: tab)
+                        }
+                    )
                 }
-            
-            HomeView()
-                .tag(TabItem.home)
-                .tabItem {
-                    Image(systemName: "house.fill")
-                    Text("홈")
-                }
-
-
-
-            ChatView(viewModel: chatViewModel)
-                .tag(TabItem.chat)
-                .tabItem {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                    Text("채팅")
-                }
+            }
+            .environmentObject(container)
         }
-        .tint(Color("g_blue"))
-        .accentColor(Color("g_blue"))
-        .preferredColorScheme(.dark)
+        .toolbarBackground(.customwhite, for: .tabBar)
+        .ignoresSafeArea(.keyboard)
+        .navigationBarBackButtonHidden(true)
     }
 
-    @ViewBuilder
-    private var currentScreen: some View {
-        switch selectedTab {
+    private func getIconName(for tab: TabItem, isSelected: Bool) -> String {
+        switch tab {
+        case .home:
+            return isSelected ? "house.fill" : "house"
+        case .chat:
+            return isSelected ? "message.fill" : "message"
         case .mate:
-            MateView()
+            return isSelected ? "person.2.fill" : "person.2"
+        }
+    }
+
+    /// 각 탭에 해당하는 뷰
+    @ViewBuilder
+    private func tabView(tab: TabItem) -> some View {
+        switch tab {
         case .home:
             HomeView()
         case .chat:
-            ChatView()
+            ChatListView()
+        case .mate:
+            MateView()
         }
     }
 }

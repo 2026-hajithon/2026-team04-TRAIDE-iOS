@@ -12,15 +12,31 @@ struct SplashView: View {
         
         ZStack{
             
-            Color._100
-                .ignoresSafeArea()
-                .edgesIgnoringSafeArea(.all)
             
-            Image(.logo)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal,20)
+            LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)
+                .ignoresSafeArea()
+            
+            VStack{
+                Spacer(minLength: 320)
+                
+                Image(.logo)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal,115)
+                
+                
+                
+                
+                Image(.splashbottom)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal,115)
+                
+                Spacer(minLength: 300)
+
+            }
                 
         }
         

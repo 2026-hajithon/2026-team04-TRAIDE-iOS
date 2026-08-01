@@ -38,3 +38,27 @@ extension APIError: LocalizedError {
         }
     }
 }
+
+extension APIError {
+    static func response(data: Data, statusCode: Int) -> APIError {
+        if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let code = payload["code"] as? String,
+           let message = payload["message"] as? String {
+            return .serverError(code: code, message: message)
+        }
+
+        switch statusCode {
+        case 401:
+            return .unauthorized
+        case 403:
+            return .forbidden
+        case 404:
+            return .notFound
+        default:
+            return .serverError(
+                code: String(statusCode),
+                message: "요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요."
+            )
+        }
+    }
+}
