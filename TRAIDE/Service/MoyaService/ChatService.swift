@@ -50,8 +50,10 @@ final class FirebaseSessionService {
     }
 
     func signOut() throws {
+        defer {
+            _ = KeychainManager.shared.delete(key: firebaseTokenKey)
+        }
         try Auth.auth().signOut()
-        _ = KeychainManager.shared.delete(key: firebaseTokenKey)
     }
 }
 

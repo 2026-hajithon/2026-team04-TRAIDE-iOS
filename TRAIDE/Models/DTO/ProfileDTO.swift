@@ -81,3 +81,28 @@ struct CreateUserProfile: Codable{
     let level: String
     let regionId: Int
 }
+
+/// `PATCH /api/users/me`는 전달한 필드만 수정합니다.
+struct UpdateUserProfile: Encodable {
+    let name: String?
+    let age: Int?
+    let gender: ViewProfileRequest.Gender?
+    let sportId: Int?
+    let level: ViewProfileRequest.Level?
+    let regionId: Int?
+}
+
+struct ProfileReview: Decodable, Identifiable {
+    let id: Int
+    let rating: Int
+    let content: String
+    let imageUrl: String?
+    let createdAt: String
+    let writer: ReviewWriter
+}
+
+struct ReviewWriter: Decodable {
+    let id: Int
+    let name: String
+    let imageUrl: String?
+}

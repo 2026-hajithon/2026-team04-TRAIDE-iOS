@@ -7,6 +7,10 @@
 
 import Foundation
 
+struct MateListResponse<Item: Decodable>: Decodable {
+    let items: [Item]
+}
+
 // MARK: - 메이트(친구) 목록 응답 DTO
 struct MateResponse: Codable, Identifiable {
     let id: Int
@@ -15,7 +19,22 @@ struct MateResponse: Codable, Identifiable {
     let region: RegionInfo
     let imageUrl: String?
     let appointmentCount: Int
-    let chatRoomId: String
+    let chatRoomId: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, sport, region, imageUrl, appointmentCount, chatRoomId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        sport = try container.decode(SportInfo.self, forKey: .sport)
+        region = try container.decode(RegionInfo.self, forKey: .region)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        appointmentCount = try container.decodeIfPresent(Int.self, forKey: .appointmentCount) ?? 0
+        chatRoomId = try container.decodeIfPresent(String.self, forKey: .chatRoomId)
+    }
 }
 
 struct MateRequestResponse: Decodable, Identifiable {

@@ -8,67 +8,63 @@
 import SwiftUI
 
 struct ChatListView: View {
+    @Environment(NavigationRouter.self) private var router
     @StateObject private var viewModel = ChatListViewModel()
     @State private var query: String = ""
 
     var body: some View {
-        
-        NavigationStack {
-            ZStack {
-                Color(._100).ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Top bar
-                    HStack {
-                        Text("채팅")
-                            .font(.pretendardBold(22))
-                            .foregroundStyle(Color("customwhite"))
-                        Spacer()
-                        
-                        
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
-                    .background(Color(._100))
-                    
 
-                    
-                    // List
-                    ScrollView {
-                        LazyVStack(spacing: 0, pinnedViews: []) {
-                            ForEach(filteredRooms, id: \.id) { room in
-                                // ChatView로 이동하는 네비게이션 링크 추가
-                                NavigationLink(destination: ChatView(roomId: room.id)) {
-                                    conversationRow(room)
-                                        .background(Color(._100))
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain) // 기본 버튼 스타일 제거
+        ZStack {
+            Color(._100).ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Top bar
+                HStack {
+                    Text("채팅")
+                        .font(.pretendardBold(22))
+                        .foregroundStyle(Color("customwhite"))
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .background(Color(._100))
+
+                // List
+                ScrollView {
+                    LazyVStack(spacing: 0, pinnedViews: []) {
+                        ForEach(filteredRooms, id: \.id) { room in
+                            Button {
+                                router.push(.chat(roomId: room.id))
+                            } label: {
+                                conversationRow(room)
+                                    .background(Color(._100))
+                                    .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
             }
-            .navigationBarHidden(true) // 기본 네비게이션 바 숨김 처리 (커스텀 Top bar 사용을 위함)
-            .alert("채팅 오류", isPresented: Binding(
-                get: { viewModel.errorMessage != nil },
-                set: { if !$0 { viewModel.errorMessage = nil } }
-            )) {
-                Button("확인", role: .cancel) { viewModel.errorMessage = nil }
-            } message: {
-                Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
-            }
+        }
+        .navigationBarHidden(true)
+        .alert("채팅 오류", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("확인", role: .cancel) { viewModel.errorMessage = nil }
+        } message: {
+            Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
         }
     }
-    
+
     // 뷰모델의 데이터를 바탕으로 검색 필터링 적용
     private var filteredRooms: [ChatRoom] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty { return viewModel.chatRooms }
         return viewModel.chatRooms.filter { $0.name.contains(q) || $0.lastMessage.contains(q) }
     }
-    
+
     @ViewBuilder
     private func conversationRow(_ room: ChatRoom) -> some View {
         HStack(spacing: 12) {
@@ -113,4 +109,5 @@ struct ChatListView: View {
 
 #Preview {
     ChatListView()
+        .environment(NavigationRouter())
 }

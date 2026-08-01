@@ -6,21 +6,22 @@
 //
 
 import SwiftUI
+import Combine
 
 struct LoginView: View {
     @Environment(NavigationRouter.self) private var router
     @EnvironmentObject private var container: DIContainer
     @StateObject private var viewModel = LoginViewModel()
-    
+
     enum Field {
         case id, password
     }
     @FocusState private var focusedField: Field?
-    
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            
+
             // MARK: - 로고 영역
             Image(.logo)
                 .resizable()
@@ -29,7 +30,7 @@ struct LoginView: View {
                 .tint(.customwhite)
 
 
-            
+
             // MARK: - 입력 폼 영역
             VStack(spacing: 16) {
                 // 아이디 입력
@@ -39,7 +40,7 @@ struct LoginView: View {
                     .background(Color(._200))
                     .cornerRadius(8)
                     .foregroundStyle(Color(._500))
-                
+
                 // 비밀번호 입력
                 SecureField("비밀번호", text: $viewModel.password)
                     .focused($focusedField, equals: .password)
@@ -49,37 +50,37 @@ struct LoginView: View {
                     .foregroundStyle(Color(.customwhite))
             }
             .padding(.bottom, 30)
-            
+
             // MARK: - 로그인 버튼
             MainBigButton(
                 text: "로그인",
                 isDisabled: viewModel.loginId.isEmpty || viewModel.password.isEmpty || viewModel.isLoading,
                 action: {
                     focusedField = nil
-                    
+
                     viewModel.login()
                 }
             )
             .padding(.bottom, 24)
-            
+
             // MARK: - 하단 링크 영역
             HStack(spacing: 16) {
                 Text("아이디 찾기")
                     .font(.pretendardMedium(14))
                     .foregroundStyle(Color(._500))
-                
+
                 Text("|")
                     .font(.pretendardMedium(14))
                     .foregroundStyle(Color(._500))
-                
+
                 Text("비밀번호 찾기")
                     .font(.pretendardMedium(14))
                     .foregroundStyle(Color(._500))
-                
+
                 Text("|")
                     .font(.pretendardMedium(14))
                     .foregroundStyle(Color(._500))
-                
+
                 Button(action: {
                     router.push(.onboarding)
                 }) {
@@ -88,7 +89,7 @@ struct LoginView: View {
                         .foregroundStyle(Color(._500))
                 }
             }
-            
+
             Spacer()
             Spacer()
         }
@@ -115,8 +116,7 @@ struct LoginView: View {
         // MARK: - 로그인 성공 처리
         .onChange(of: viewModel.isLoginSuccessful) { _, isSuccess in
             if isSuccess {
-                container.selectedTab = .home
-                router.replace(with: .home)
+                container.completeAuthentication()
             }
         }
     }

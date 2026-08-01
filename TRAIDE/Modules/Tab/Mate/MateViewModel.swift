@@ -58,6 +58,9 @@ final class MateViewModel: ObservableObject {
             }
             errorMessage = nil
         } catch {
+            #if DEBUG
+            print("[MateViewModel] 메이트 정보 로드 실패: \(error)")
+            #endif
             errorMessage = "메이트 정보를 불러오지 못했어요."
         }
     }

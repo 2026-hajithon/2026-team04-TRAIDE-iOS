@@ -12,6 +12,8 @@ import Moya
 protocol MateServiceProtocol {
     func fetchMates() async throws -> [MateResponse]
     func fetchRequests() async throws -> [MateRequestResponse]
+    func sendRequest(to userId: Int) async throws
+    func cancelRequest(to userId: Int) async throws
     func acceptRequest(id: Int) async throws
     func rejectRequest(id: Int) async throws
 }
@@ -24,19 +26,27 @@ final class MateService: MateServiceProtocol {
     }
 
     func fetchMates() async throws -> [MateResponse] {
-        try await requestResult(.getMates, as: [MateResponse].self)
+        try await requestItems(.getMates, as: MateResponse.self)
     }
 
     func fetchRequests() async throws -> [MateRequestResponse] {
-        try await requestResult(.getRequests, as: [MateRequestResponse].self)
+        try await requestItems(.getRequests, as: MateRequestResponse.self)
+    }
+
+    func sendRequest(to userId: Int) async throws {
+        try await requestStatus(.sendRequest(userId: userId))
+    }
+
+    func cancelRequest(to userId: Int) async throws {
+        try await requestStatus(.cancelRequest(userId: userId))
     }
 
     func acceptRequest(id: Int) async throws {
-        try await requestStatus(.acceptRequest(id: id))
+        try await requestStatus(.respondToRequest(id: id, response: .accept))
     }
 
     func rejectRequest(id: Int) async throws {
-        try await requestStatus(.rejectRequest(id: id))
+        try await requestStatus(.respondToRequest(id: id, response: .reject))
     }
 
     private func requestResult<T: Decodable>(_ target: MateRouter, as type: T.Type) async throws -> T {
@@ -49,6 +59,31 @@ final class MateService: MateServiceProtocol {
                     receiveValue: { continuation.resume(returning: $0) }
                 )
                 .store(in: &cancellables)
+        }
+    }
+
+    private func requestItems<T: Decodable>(_ target: MateRouter, as type: T.Type) async throws -> [T] {
+        let response: Response = try await withCheckedThrowingContinuation { continuation in
+            provider.request(target) { result in
+                switch result {
+                case .success(let response):
+                    continuation.resume(returning: response)
+                case .failure(let error):
+                    continuation.resume(throwing: APIError.moyaError(error))
+                }
+            }
+        }
+
+        guard (200..<300).contains(response.statusCode) else {
+            throw APIError.response(data: response.data, statusCode: response.statusCode)
+        }
+
+        do {
+            return try JSONDecoder()
+                .decode(MateListResponse<T>.self, from: response.data)
+                .items
+        } catch {
+            throw APIError.decodingError
         }
     }
 

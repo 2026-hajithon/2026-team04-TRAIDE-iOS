@@ -14,10 +14,16 @@ struct RootView: View {
         @Bindable var router = container.navigationRouter
 
         NavigationStack(path: $router.path) {
-            LoginView()
-                .navigationDestination(for: Route.self) { route in
-                    destination(for: route)
+            Group {
+                if container.isAuthenticated {
+                    MainTabView()
+                } else {
+                    LoginView()
                 }
+            }
+            .navigationDestination(for: Route.self) { route in
+                destination(for: route)
+            }
         }
         .environment(router)
     }
@@ -31,10 +37,16 @@ struct RootView: View {
             OnboardingView()
         case .login:
             LoginView()
-        case .chat(let roomId):
-            ChatView(roomId: roomId)
+        case .chat(let roomId, let participantId, let participantName):
+            ChatView(
+                roomId: roomId,
+                participantId: participantId,
+                participantName: participantName
+            )
         case .appointment:
             ScheduleRegistrationView()
+        case .profile:
+            ProfileView()
         case .otherProfile(let profile):
             OtherProfileView(profile: profile)
         case .record(let profile):

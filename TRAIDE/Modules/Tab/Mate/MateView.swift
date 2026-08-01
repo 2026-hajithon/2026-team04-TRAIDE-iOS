@@ -10,6 +10,14 @@ struct MateView: View {
         GridItem(.flexible(), spacing: 12)
     ]
 
+    private var displayedMates: [Mate] {
+        var result = viewModel.mates
+        for mate in container.requestedMates where !result.contains(where: { $0.id == mate.id }) {
+            result.append(mate)
+        }
+        return result
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
@@ -20,19 +28,17 @@ struct MateView: View {
             }
             .refreshable { await viewModel.load() }
             .background(MatePalette.background.ignoresSafeArea())
-            .safeAreaInset(edge: .bottom, spacing: 0) { mateTabBar }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(isPresented: $showRequests) {
                 MateRequestListView(viewModel: viewModel)
             }
             .task { await viewModel.load() }
             .overlay {
-                if viewModel.isLoading && viewModel.mates.isEmpty {
+                if viewModel.isLoading && displayedMates.isEmpty {
                     ProgressView().tint(.white)
                 }
             }
         }
-        .toolbar(.hidden, for: .tabBar)
         .preferredColorScheme(.dark)
     }
 
@@ -56,7 +62,7 @@ struct MateView: View {
     private var mateSection: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("내 메이트 \(viewModel.mates.count)")
+                Text("내 메이트 \(displayedMates.count)")
                     .font(.pretendardSemiBold(16))
                     .foregroundStyle(MatePalette.sectionText)
                 Spacer()
@@ -65,7 +71,7 @@ struct MateView: View {
                     .foregroundStyle(MatePalette.mutedText)
             }
 
-            if viewModel.mates.isEmpty, !viewModel.isLoading {
+            if displayedMates.isEmpty, !viewModel.isLoading {
                 Text(viewModel.errorMessage ?? "아직 등록된 메이트가 없어요.")
                     .font(.pretendardRegular(14))
                     .foregroundStyle(MatePalette.mutedText)
@@ -73,7 +79,7 @@ struct MateView: View {
                     .padding(.top, 100)
             } else {
                 LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(viewModel.mates) { mate in
+                    ForEach(displayedMates) { mate in
                         Button {
                             container.navigationRouter.push(.otherProfile(ProfileDetail(mate: mate)))
                         } label: {
@@ -88,30 +94,6 @@ struct MateView: View {
         .padding(.vertical, 10)
     }
 
-    private var mateTabBar: some View {
-        HStack(spacing: 0) {
-            tabButton("메이트", tab: .mate)
-            tabButton("홈", tab: .home)
-            tabButton("채팅", tab: .chat)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(MatePalette.background)
-    }
-
-    private func tabButton(_ title: String, tab: TabItem) -> some View {
-        Button {
-            container.selectedTab = tab
-        } label: {
-            Text(title)
-                .font(.pretendardMedium(16))
-                .foregroundStyle(container.selectedTab == tab ? MatePalette.primaryText : MatePalette.mutedText)
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(container.selectedTab == tab ? MatePalette.card : .clear, in: Capsule())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 private struct MateGridCard: View {
@@ -202,12 +184,7 @@ private struct MateRequestListView: View {
         .background(MatePalette.background.ignoresSafeArea())
         .navigationTitle("요청(\(viewModel.requests.count))")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { dismiss() } label: { Image(systemName: "chevron.left") }
-                    .tint(MatePalette.primaryText)
-            }
-        }
+        .customBackButton(action: dismiss.callAsFunction)
         .toolbarBackground(MatePalette.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
     }

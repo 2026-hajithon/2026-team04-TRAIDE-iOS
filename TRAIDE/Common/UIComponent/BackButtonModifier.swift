@@ -10,17 +10,30 @@ import SwiftUI
 
 struct BackButtonModifier: ViewModifier {
     @Environment(NavigationRouter.self) var router
+    let isHidden: Bool
+    let action: (() -> Void)?
+
+    init(isHidden: Bool = false, action: (() -> Void)? = nil) {
+        self.isHidden = isHidden
+        self.action = action
+    }
     
     func body(content: Content) -> some View {
         content
             .navigationBarBackButtonHidden(true)
             .toolbar {
-                ToolbarItem() {
-                    Button(action: {
-                        router.pop()
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .foregroundStyle(Color("customwhite")) // 컬러 에셋 적용
+                if !isHidden {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: {
+                            if let action {
+                                action()
+                            } else {
+                                router.pop()
+                            }
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .foregroundStyle(Color("customwhite")) // 컬러 에셋 적용
+                        }
                     }
                 }
             }
@@ -28,7 +41,7 @@ struct BackButtonModifier: ViewModifier {
 }
 
 extension View {
-    func customBackButton() -> some View {
-        self.modifier(BackButtonModifier())
+    func customBackButton(isHidden: Bool = false, action: (() -> Void)? = nil) -> some View {
+        modifier(BackButtonModifier(isHidden: isHidden, action: action))
     }
 }

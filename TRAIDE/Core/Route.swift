@@ -14,8 +14,9 @@ enum Route: Hashable {
     case home
     case onboarding
     case login
-    case chat(roomId: String)
+    case chat(roomId: String, participantId: String? = nil, participantName: String? = nil)
     case appointment
+    case profile
     case otherProfile(ProfileDetail)
     case record(ProfileDetail)
     

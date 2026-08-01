@@ -10,9 +10,12 @@ import Alamofire
 enum ProfileRouter {
     case createMyProfile(CreateUserProfile)
     case myProfile
-    case updateMyProfile(CreateUserProfile)
+    case updateMyProfile(UpdateUserProfile)
     case userProfile(userId: Int)
     case recommendations
+    case reviews(userId: Int)
+    case sports
+    case regions
 }
 
 extension ProfileRouter: APITargetType {
@@ -30,6 +33,12 @@ extension ProfileRouter: APITargetType {
             "/api/users/\(userId)"
         case .recommendations:
             "/api/users/recommendations"
+        case .reviews(let userId):
+            "/api/users/\(userId)/reviews"
+        case .sports:
+            "/api/sports"
+        case .regions:
+            "/api/regions"
         }
     }
 
@@ -37,7 +46,7 @@ extension ProfileRouter: APITargetType {
         switch self {
         case .createMyProfile:
             .post
-        case .myProfile, .userProfile, .recommendations:
+        case .myProfile, .userProfile, .recommendations, .reviews, .sports, .regions:
             .get
         case .updateMyProfile:
             .patch
@@ -50,7 +59,7 @@ extension ProfileRouter: APITargetType {
             .requestJSONEncodable(request)
         case .updateMyProfile(let request):
             .requestJSONEncodable(request)
-        case .myProfile, .userProfile, .recommendations:
+        case .myProfile, .userProfile, .recommendations, .reviews, .sports, .regions:
             .requestPlain
         }
     }

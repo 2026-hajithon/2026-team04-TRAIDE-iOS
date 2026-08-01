@@ -16,11 +16,11 @@ class ChatListViewModel: ObservableObject {
     @Published var errorMessage: String?
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
-    
+
     init() {
         Task { await connect() }
     }
-    
+
     private func connect() async {
         do {
             _ = try await FirebaseSessionService.shared.restoreSessionIfNeeded()
@@ -36,22 +36,43 @@ class ChatListViewModel: ObservableObject {
             errorMessage = "Firebase 로그인이 필요합니다. 다시 로그인해주세요."
             return
         }
-        
-        // participants 배열에 내 UID가 포함된 채팅방만 실시간으로 수신 (최신순 정렬)
+
+        // Firestore의 arrayContains + orderBy 조합은 별도의 복합 인덱스가 필요합니다.
+        // 채팅 목록이 인덱스 배포 여부 때문에 중단되지 않도록 서버에서는 참여자만
+        // 필터링하고, 수신한 문서를 앱에서 최신순으로 정렬합니다.
         listener = db.collection("rooms")
             .whereField("participants", arrayContains: currentUserId)
-            .order(by: "timestamp", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
                 guard let documents = snapshot?.documents else {
-                    self.errorMessage = error?.localizedDescription ?? "채팅방을 불러오지 못했습니다."
+                    let description = error?.localizedDescription ?? ""
+                    if description.localizedCaseInsensitiveContains("permission denied")
+                        || description.localizedCaseInsensitiveContains("firestore api has not been used") {
+                        self.errorMessage = "채팅 서버가 아직 활성화되지 않았습니다. 잠시 후 다시 시도해주세요."
+                    } else {
+                        self.errorMessage = description.isEmpty ? "채팅방을 불러오지 못했습니다." : description
+                    }
                     return
                 }
-                
-                self.chatRooms = documents.compactMap(ChatRoom.init(document:))
+
+                self.errorMessage = nil
+                self.chatRooms = documents
+                    .compactMap(ChatRoom.init(document:))
+                    .sorted { lhs, rhs in
+                        switch (lhs.timestamp, rhs.timestamp) {
+                        case let (left?, right?):
+                            return left.dateValue() > right.dateValue()
+                        case (.some, .none):
+                            return true
+                        case (.none, .some):
+                            return false
+                        case (.none, .none):
+                            return lhs.id < rhs.id
+                        }
+                    }
             }
     }
-    
+
     deinit {
         listener?.remove()
     }

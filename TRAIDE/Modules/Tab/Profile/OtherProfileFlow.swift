@@ -68,7 +68,12 @@ struct ProfileDetail: Hashable {
 
 struct OtherProfileView: View {
     @Environment(NavigationRouter.self) private var router
+    @EnvironmentObject private var container: DIContainer
     let profile: ProfileDetail
+
+    private var isRequestSent: Bool {
+        container.isMateRequested(id: profile.id)
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -89,6 +94,7 @@ struct OtherProfileView: View {
         .background(Color(._100).ignoresSafeArea())
         .navigationTitle("프로필")
         .navigationBarTitleDisplayMode(.inline)
+        .customBackButton()
         .toolbar(.hidden, for: .tabBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarBackground(Color(._100), for: .navigationBar)
@@ -125,13 +131,49 @@ private extension OtherProfileView {
             }
 
             VStack(spacing: 8) {
-                MainBigButton(text: "채팅하기") {
-                    router.push(.chat(roomId: profile.chatRoomID ?? profile.id))
+                if profile.relationship == .recommendation {
+                    mateRequestButton
+                } else {
+                    MainBigButton(text: "채팅하기") {
+                        let currentUserID = FirebaseSessionService.shared.currentUserId ?? ""
+                        let directRoomID = [currentUserID, profile.id]
+                            .filter { !$0.isEmpty }
+                            .sorted()
+                            .joined(separator: "_")
+                        router.push(.chat(
+                            roomId: profile.chatRoomID ?? "direct_\(directRoomID)",
+                            participantId: profile.id,
+                            participantName: profile.name
+                        ))
+                    }
                 }
                 statistics
                 heatCard
             }
         }
+    }
+
+    var mateRequestButton: some View {
+        Button {
+            container.setMateRequest(profile.asMate, isRequested: !isRequestSent)
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        isRequestSent
+                            ? AnyShapeStyle(Color(._200))
+                            : AnyShapeStyle(ProfileFlowPalette.gradient)
+                    )
+
+                Text(isRequestSent ? "신청 취소" : "메이트 신청하기")
+                    .font(.pretendardSemiBold(16))
+                    .foregroundStyle(isRequestSent ? Color(.customwhite) : Color(.customblack))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isRequestSent ? "메이트 신청 취소" : "메이트 신청하기")
     }
 
     var tags: some View {
@@ -279,6 +321,22 @@ private extension OtherProfileView {
     }
 }
 
+private extension ProfileDetail {
+    var asMate: Mate {
+        Mate(
+            id: id,
+            nickname: name,
+            teachingSport: sport,
+            learningSport: level,
+            age: age,
+            district: district,
+            imageURL: imageURL,
+            appointmentCount: appointmentCount,
+            chatRoomID: chatRoomID
+        )
+    }
+}
+
 struct ActivityRecordView: View {
     @Environment(NavigationRouter.self) private var router
     @EnvironmentObject private var container: DIContainer
@@ -372,6 +430,7 @@ private extension ActivityRecordView {
         }
         .navigationTitle("기록 남기기")
         .navigationBarTitleDisplayMode(.inline)
+        .customBackButton()
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarBackground(Color(._100), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -425,7 +484,7 @@ private extension ActivityRecordView {
 
             MainBigButton(text: "홈으로 가기") {
                 container.selectedTab = .home
-                router.replace(with: .home)
+                router.reset()
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 16)

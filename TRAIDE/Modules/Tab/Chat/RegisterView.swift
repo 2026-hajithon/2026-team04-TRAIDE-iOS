@@ -43,8 +43,7 @@ struct ScheduleRegistrationView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 30) {
                         
@@ -154,22 +153,12 @@ struct ScheduleRegistrationView: View {
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
 #endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: router.pop) {
-                        Image(systemName: "chevron.left")
-                            .foregroundStyle(Color(.customwhite))
-                    }
-                }
-#endif
-            }
+            .customBackButton()
 #if os(iOS)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbarBackground(Color(._100), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
 #endif
-        }
     }
     
     // MARK: - Sub Views

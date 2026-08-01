@@ -15,8 +15,16 @@ struct ChatView: View {
     @State private var composedText: String = ""
     
     // 테스트 또는 라우팅을 위해 roomId를 주입받도록 설정 (기본값 테스트용 string 지정 가능)
-    init(roomId: String = "test_room_id") {
-        _viewModel = StateObject(wrappedValue: ChatViewModel(roomId: roomId))
+    init(
+        roomId: String = "test_room_id",
+        participantId: String? = nil,
+        participantName: String? = nil
+    ) {
+        _viewModel = StateObject(wrappedValue: ChatViewModel(
+            roomId: roomId,
+            participantId: participantId,
+            participantName: participantName
+        ))
     }
     
     private let timeFormatter: DateFormatter = {
@@ -31,35 +39,6 @@ struct ChatView: View {
             Color(._100).ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Top Bar
-                HStack(spacing: 12) {
-                    Button(action: router.pop, label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(Color("customwhite"))
-                    })
-                    
-                    Text("상대방 아이디")
-                        .font(.pretendardBold(18))
-                        .foregroundStyle(Color("customwhite"))
-                        .padding(.leading, 4)
-                    
-                    Spacer()
-                    
-                    Button(action: {}, label: {
-                        Text("함께한 기록")
-                            .font(.pretendardMedium(12))
-                            .foregroundStyle(Color("customwhite"))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color(._200))
-                            .cornerRadius(12)
-                    })
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(Color(._100).opacity(0.001))
-                
                 // 날짜 구분선
                 Text("2024년 9월 12일")
                     .font(.pretendardRegular(12))
@@ -140,6 +119,25 @@ struct ChatView: View {
             }
             .background(Color(._100).ignoresSafeArea())
         }
+        .navigationTitle(viewModel.participantName ?? "채팅")
+        .navigationBarTitleDisplayMode(.inline)
+        .customBackButton()
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: {}) {
+                    Text("함께한 기록")
+                        .font(.pretendardMedium(12))
+                        .foregroundStyle(Color("customwhite"))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(._200))
+                        .cornerRadius(12)
+                }
+            }
+        }
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(Color(._100), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .alert("채팅 오류", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }

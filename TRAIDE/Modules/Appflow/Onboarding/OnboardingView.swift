@@ -1,104 +1,50 @@
-//
-//  OnboardingView.swift
-//  TRAIDE
-//
-//  Created by 김지우 on 8/1/26.
-//
-
 import SwiftUI
+import UIKit
 
-// MARK: - 공통 레이아웃 컴포넌트
-struct OnboardingLayout<Content: View>: View {
-    let title: String
-    let buttonText: String
-    let isButtonDisabled: Bool
-    let showBackButton: Bool
-
-    let backAction: () -> Void
-    let nextAction: () -> Void
-
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 30) {
-            // 커스텀 네비게이션 바 (뒤로 가기)
-            HStack {
-                if showBackButton {
-                    Button(action: {
-                        backAction()
-                    }, label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(Color("customwhite"))
-                    })
-                }
-                Spacer()
-            }
-            .frame(height: 44)
-            .padding(.bottom, -10)
-
-            // 공통 타이틀
-            Text(title)
-                .font(.pretendardBold(24))
-                .foregroundStyle(Color("customwhite"))
-                .lineSpacing(6)
-
-            // 컨텐츠 영역
-            content
-
-            Spacer()
-
-            // 공통 하단 버튼
-            MainBigButton(
-                text: buttonText,
-                isDisabled: isButtonDisabled,
-                action: nextAction
-            )
-        }
-        .padding(.horizontal, 20)
-        .background(Color(._100).ignoresSafeArea())
-    }
-}
-
-// MARK: - 메인 온보딩 뷰
 struct OnboardingView: View {
     @Environment(NavigationRouter.self) private var router
     @EnvironmentObject private var container: DIContainer
     @State private var currentStep: OnboardingStep = .loginInfo
-    @StateObject private var viewModel = SignupViewModel() // 뷰모델 연동
+    @StateObject private var viewModel = SignupViewModel()
+    @FocusState private var focusedField: AccountField?
 
-    @State private var isRegionSheetPresented: Bool = false
+    private enum AccountField { case id, password, passwordConfirm, name, age }
 
-    // UI 표시용 상태 변수 (선택된 텍스트를 저장하고 ViewModel의 ID로 변환하여 전달)
-    @State private var selectedSportName: String = ""
-    @State private var selectedRegionName: String = ""
-
-    private let seoulDistricts: [String] = [
-        "강남구","강동구","강북구","강서구","관악구","광진구","구로구","금천구","노원구","도봉구","동대문구","동작구","마포구","서대문구","서초구","성동구","성북구","송파구","양천구","영등포구","용산구","은평구","종로구","중구","중랑구"
+    private let sports = [
+        (1, "농구"), (2, "축구"), (3, "테니스"), (4, "배드민턴"), (5, "탁구"),
+        (6, "수영"), (7, "헬스"), (8, "클라이밍"), (9, "러닝")
+    ]
+    private let districts = [
+        "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구",
+        "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구",
+        "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"
     ]
 
     var body: some View {
         ZStack {
-            Color(._100).ignoresSafeArea()
-
+            Color._100.ignoresSafeArea()
             switch currentStep {
-            case .loginInfo:
-                loginInfoStep
-            case .basicInfo:
-                basicInfoStep
-            case .profile:
-                profileStep
-            case .sportsTalent:
-                sportsTalentStep
-            case .welcome:
-                welcomeStep
+            case .loginInfo: loginInfoView
+            case .requiredInfo: requiredInfoView
+            case .sportsTalent: sportsTalentView
+            case .welcome: welcomeView
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: currentStep)
-        // 로딩 및 에러 처리
+        .customBackButton(isHidden: currentStep == .sportsTalent || currentStep == .welcome) {
+            if currentStep == .loginInfo {
+                router.pop()
+            } else if currentStep == .requiredInfo {
+                currentStep = .loginInfo
+            }
+        }
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(Color._100, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(currentStep == .sportsTalent || currentStep == .welcome ? .hidden : .visible, for: .navigationBar)
+        .animation(.easeInOut(duration: 0.22), value: currentStep)
         .overlay {
             if viewModel.isLoading {
-                Color.black.opacity(0.2).ignoresSafeArea()
+                Color.black.opacity(0.25).ignoresSafeArea()
                 ProgressView().tint(.white)
             }
         }
@@ -107,404 +53,337 @@ struct OnboardingView: View {
         } message: {
             Text(viewModel.errorMessage ?? "오류가 발생했습니다.")
         }
-        // 회원가입 성공 시 메인으로 이동
-        .onChange(of: viewModel.isSignupSuccessful) { _, isSuccess in
-            if isSuccess {
-                container.selectedTab = .home
-                router.replace(with: .home)
-            }
-        }
-    }
-}
-
-// MARK: - 개별 단계 뷰 (Extension)
-extension OnboardingView {
-
-    // 1단계: 로그인 정보 (디자인 흐름상 가장 먼저 배치)
-    private var loginInfoStep: some View {
-        OnboardingLayout(
-            title: "로그인에 사용할\n정보를 입력해주세요",
-            buttonText: "다음으로",
-            isButtonDisabled: !viewModel.isLoginInfoValid,
-            showBackButton: true,
-            backAction: { }, // 첫 화면이므로 이전 화면 이동 로직 필요 시 수정
-            nextAction: { currentStep = .basicInfo }
-        ) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("아이디")
-                    .font(.pretendardMedium(14))
-                    .foregroundStyle(Color("customwhite"))
-                TextField("입력해주세요", text: $viewModel.loginId)
-                    .padding().background(Color(._200)).cornerRadius(8)
-                    .foregroundStyle(Color("customwhite"))
-
-                Text("비밀번호")
-                    .font(.pretendardMedium(14))
-                    .foregroundStyle(Color("customwhite"))
-                    .padding(.top, 10)
-                SecureField("입력해주세요", text: $viewModel.password)
-                    .padding().background(Color(._200)).cornerRadius(8)
-                    .foregroundStyle(Color("customwhite"))
-
-                if !viewModel.password.isEmpty && viewModel.password.count < 8 {
-                    Text("비밀번호는 8자 이상이어야 합니다")
-                        .font(.pretendardRegular(12))
-                        .foregroundStyle(Color.red)
-                        .padding(.top, 4)
-                }
-
-                Text("비밀번호 확인")
-                    .font(.pretendardMedium(14))
-                    .foregroundStyle(Color("customwhite"))
-                    .padding(.top, 10)
-                SecureField("입력해주세요", text: $viewModel.passwordConfirm)
-                    .padding().background(Color(._200)).cornerRadius(8)
-                    .foregroundStyle(Color("customwhite"))
-
-                if !viewModel.passwordConfirm.isEmpty {
-                    Text(viewModel.isPasswordMatching ? "비밀번호가 일치합니다" : "비밀번호가 일치하지 않습니다")
-                        .font(.pretendardRegular(12))
-                        .foregroundStyle(viewModel.isPasswordMatching ? Color("g_blue") : Color.red)
-                        .padding(.top, 4)
-                }
-            }
+        .onChange(of: viewModel.isSignupSuccessful) { _, succeeded in
+            if succeeded { currentStep = .welcome }
         }
     }
 
-    // 2단계: 기본 정보
-    private var basicInfoStep: some View {
-        OnboardingLayout(
-            title: "반가워요!\n기본 정보를 입력해주세요",
-            buttonText: "다음으로",
-            isButtonDisabled: !viewModel.isBasicInfoValid,
-            showBackButton: true,
-            backAction: { currentStep = .loginInfo },
-            nextAction: { currentStep = .profile }
-        ) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("이름")
-                    .font(.pretendardMedium(14))
-                    .foregroundStyle(Color("customwhite"))
-                TextField("입력해주세요", text: $viewModel.name)
-                    .padding().background(Color(._200)).cornerRadius(8)
-                    .foregroundStyle(Color("customwhite"))
-
-                Text("성별")
-                    .font(.pretendardMedium(14))
-                    .foregroundStyle(Color("customwhite"))
-                    .padding(.top, 20)
-
-                HStack(spacing: 12) {
-                    genderButton(title: "남", value: "MALE")
-                    genderButton(title: "여", value: "FEMALE")
-                }
-
-                Text("나이")
-                    .font(.pretendardMedium(14))
-                    .foregroundStyle(Color("customwhite"))
-                    .padding(.top, 20)
-
-#if os(iOS)
-                TextField(text: $viewModel.age, prompt: Text("입력해주세요")) {}
-                    .keyboardType(.numberPad)
-                    .padding()
-                    .background(Color(._200))
-                    .cornerRadius(8)
-                    .foregroundStyle(Color("customwhite"))
-#else
-                TextField(text: $viewModel.age, prompt: Text("입력해주세요")) {}
-                    .padding()
-                    .background(Color(._200))
-                    .cornerRadius(8)
-                    .foregroundStyle(Color("customwhite"))
-#endif
-
-                if !viewModel.age.isEmpty,
-                   !(14...100).contains(Int(viewModel.age) ?? -1) {
-                    Text("나이는 14세부터 100세 사이로 입력해주세요")
-                        .font(.pretendardRegular(12))
-                        .foregroundStyle(Color.red)
-                }
-            }
-        }
-    }
-
-    // 3단계: 프로필 설정
-    private var profileStep: some View {
-        OnboardingLayout(
-            title: "사용하실 프로필을\n설정해주세요",
-            buttonText: "다음으로",
-            isButtonDisabled: false,
-            showBackButton: true,
-            backAction: { currentStep = .basicInfo },
-            nextAction: { currentStep = .sportsTalent }
-        ) {
-            VStack(spacing: 40) {
-                ZStack(alignment: .bottomTrailing) {
-                    Circle()
-                        .fill(Color(._300))
-                        .frame(width: 120, height: 120)
-                        .overlay {
-                            Image(systemName: "person.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .padding(35)
-                                .foregroundColor(Color(._400))
+    private var loginInfoView: some View {
+        onboardingPage {
+            VStack(alignment: .leading, spacing: 32) {
+                title("로그인에 사용할\n정보를 입력해주세요")
+                VStack(spacing: 24) {
+                    accountField(label: "아이디", placeholder: "입력해주세요", text: $viewModel.loginId, field: .id)
+                    accountField(label: "비밀번호", placeholder: "입력해주세요", text: $viewModel.password, field: .password, secure: true)
+                    VStack(alignment: .leading, spacing: 8) {
+                        accountField(label: "비밀번호 확인", placeholder: "입력해주세요", text: $viewModel.passwordConfirm, field: .passwordConfirm, secure: true)
+                        if !viewModel.passwordConfirm.isEmpty {
+                            Text(viewModel.isPasswordMatching ? "비밀번호가 일치합니다" : "비밀번호가 일치하지 않습니다")
+                                .font(.pretendardMedium(12))
+                                .foregroundStyle(viewModel.isPasswordMatching ? gradient : errorGradient)
                         }
-
-                    Button(action: {
-                        // 프로필 이미지 선택 로직
-                    }, label: {
-                        Circle()
-                            .fill(Color(._400))
-                            .frame(width: 32, height: 32)
-                            .overlay {
-                                Image(systemName: "camera")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(Color("customwhite"))
-                            }
-                    })
-                    .offset(x: -5, y: -5)
+                    }
                 }
-                .padding(.top, 20)
-
-                Text("\(viewModel.name) 님의 프로필 사진을 등록해주세요.")
-                    .font(.pretendardMedium(14))
-                    .foregroundStyle(Color("customwhite"))
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+        } bottom: {
+            MainBigButton(text: "다음으로", isDisabled: !viewModel.isLoginInfoValid) {
+                focusedField = nil
+                currentStep = .requiredInfo
+            }
         }
     }
 
-    // 4단계: 운동 재능
-    private var sportsTalentStep: some View {
-        OnboardingLayout(
-            title: "내가 가진 운동 재능을\n알려주세요!",
-            buttonText: "완료하기",
-            isButtonDisabled: viewModel.sportId == nil || viewModel.level.isEmpty || viewModel.regionId == nil,
-            showBackButton: true,
-            backAction: { currentStep = .profile },
-            nextAction: { currentStep = .welcome }
-        ) {
+    private var requiredInfoView: some View {
+        onboardingPage {
+            VStack(alignment: .leading, spacing: 32) {
+                title("반가워요!\n기본 정보를 입력해주세요")
+
+                VStack(spacing: 24) {
+                    basicInfoField(
+                        label: "이름",
+                        text: $viewModel.name,
+                        field: .name
+                    )
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        sectionLabel("성별")
+                        HStack(spacing: 6) {
+                            genderButton(title: "남", value: "MALE")
+                            genderButton(title: "여", value: "FEMALE")
+                        }
+                    }
+
+                    basicInfoField(
+                        label: "나이",
+                        text: $viewModel.age,
+                        field: .age,
+                        keyboardType: .numberPad
+                    )
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+        } bottom: {
+            MainBigButton(text: "다음으로", isDisabled: !viewModel.isBasicInfoValid) {
+                focusedField = nil
+                currentStep = .sportsTalent
+            }
+        }
+    }
+
+    private var sportsTalentView: some View {
+        VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 35) {
+                VStack(alignment: .leading, spacing: 36) {
+                    title("내가 가진 운동 재능을\n알려주세요!")
 
-                    // 1. 잘하는 운동 섹션
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("잘하는 운동")
-                            .font(.pretendardMedium(16))
-                            .foregroundStyle(Color("customwhite"))
-
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack(spacing: 10) {
-                                ForEach(["농구", "축구", "테니스", "배드민턴", "탁구"], id: \.self) { sport in
-                                    sportTag(title: sport, id: 1) // 실제 서버 API의 종목 ID로 매핑 필요
-                                }
-                            }
-                            HStack(spacing: 10) {
-                                ForEach(["수영", "헬스", "클라이밍", "러닝"], id: \.self) { sport in
-                                    sportTag(title: sport, id: 2) // 실제 서버 API의 종목 ID로 매핑 필요
-                                }
+                    VStack(alignment: .leading, spacing: 12) {
+                        sectionLabel("잘하는 운동")
+                        FlexibleTagLayout(spacing: 6) {
+                            ForEach(sports, id: \.0) { sport in
+                                sportTag(id: sport.0, name: sport.1)
                             }
                         }
                     }
 
-                    // 2. 숙련도 섹션
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("숙련도")
-                            .font(.pretendardMedium(16))
-                            .foregroundStyle(Color("customwhite"))
-
-                        VStack(spacing: 10) {
-                            proficiencyCard(badge: "고인물", description: "실전 노하우와 기술까지 알려드릴 수 있어요", value: "ADVANCED")
-                            proficiencyCard(badge: "지역 대표", description: "기본기를 넘어 응용까지 알려드릴 수 있어요", value: "INTERMEDIATE")
-                            proficiencyCard(badge: "워밍업", description: "기본 동작과 규칙을 알려드릴 수 있어요", value: "BEGINNER")
-                        }
+                    VStack(alignment: .leading, spacing: 8) {
+                        sectionLabel("숙련도")
+                        proficiencyCard("고인물", "실전 노하우와 기술까지 알려드릴 수 있어요", "ADVANCED")
+                        proficiencyCard("지역대표", "기본기를 넘어 응용까지 알려드릴 수 있어요", "INTERMEDIATE")
+                        proficiencyCard("워밍업", "기본 동작과 규칙을 알려드릴 수 있어요", "BEGINNER")
                     }
 
-                    // 3. 활동 지역 섹션
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("활동 지역")
-                            .font(.pretendardMedium(16))
-                            .foregroundStyle(Color("customwhite"))
-
-                        Button(action: {
-                            isRegionSheetPresented = true
-                        }, label: {
-                            HStack {
-                                Text(selectedRegionName.isEmpty ? "선택해주세요" : selectedRegionName)
-                                    .foregroundStyle(selectedRegionName.isEmpty ? Color(._400) : Color("customwhite"))
-                                Spacer()
-                                Image(systemName: "chevron.down")
-                                    .foregroundStyle(Color(._400))
-                            }
-                            .padding()
-                            .background(Color(._200))
-                            .cornerRadius(8)
-                        })
+                    VStack(alignment: .leading, spacing: 8) {
+                        sectionLabel("활동 지역")
+                        regionPicker
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.horizontal, 20)
+                .padding(.top, 31)
+                .padding(.bottom, 28)
             }
-            .sheet(isPresented: $isRegionSheetPresented) {
-                NavigationStack {
-                    List(Array(seoulDistricts.enumerated()), id: \.element) { index, district in
-                        Button(action: {
-                            selectedRegionName = district
-                            viewModel.regionId = index + 1 // 실제 서버 API의 지역 ID로 매핑 필요
-                            isRegionSheetPresented = false
-                        }, label: {
-                            HStack {
-                                Text(district)
-                                    .foregroundStyle(Color("customwhite"))
-                                Spacer()
-                                if selectedRegionName == district {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(Color("g_blue"))
-                                }
-                            }
-                        })
-                        .listRowBackground(Color(._100))
-                    }
-                    .scrollContentBackground(.hidden)
-                    .background(Color(._100))
-                    .navigationTitle("활동 지역 선택")
-                    .toolbar {
-                        ToolbarItem() {
-                            Button("닫기") { isRegionSheetPresented = false }
-                        }
-                    }
-                }
-                .preferredColorScheme(.dark)
-            }
-        }
-    }
-
-    // 5단계: 완료 화면
-    private var welcomeStep: some View {
-        VStack {
-            Spacer()
-
-            Text("\(viewModel.name.isEmpty ? "사용자" : viewModel.name) 님, 함께 운동을 교류할\n메이트를 찾아볼까요?")
-                .font(.pretendardBold(24))
-                .foregroundStyle(Color("customwhite"))
-                .multilineTextAlignment(.center)
-                .lineSpacing(6)
-
-            Spacer()
 
             MainBigButton(
-                text: "시작하기",
-                isDisabled: viewModel.isLoading,
-                action: {
-                    viewModel.submitSignup()
-                }
-            )
+                text: "완료하기",
+                isDisabled: viewModel.sportId == nil || viewModel.level.isEmpty || viewModel.regionId == nil || viewModel.isLoading
+            ) {
+                viewModel.submitSignup()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
         }
-        .padding(.horizontal, 20)
-        .background(Color(._100).ignoresSafeArea())
     }
 
-    // MARK: - Sub Views
+    private var welcomeView: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 142)
+            VStack(spacing: 0) {
+                Text("\(viewModel.displayName) 님, 함께 운동을 교류할")
+                    .foregroundStyle(Color.customwhite)
+                HStack(spacing: 0) {
+                    Text("메이트").foregroundStyle(gradient)
+                    Text("를 찾아볼까요?").foregroundStyle(Color.customwhite)
+                }
+            }
+            .font(.pretendardSemiBold(24))
 
-    /// 성별 선택 버튼
+            Image("onboardingMate")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 365, maxHeight: 307)
+                .padding(.top, 48)
+
+            Spacer(minLength: 20)
+            MainBigButton(text: "시작하기") { container.completeAuthentication() }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+        }
+    }
+
+    private func onboardingPage<Content: View, Bottom: View>(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder bottom: () -> Bottom
+    ) -> some View {
+        VStack(spacing: 0) {
+            content().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            bottom().padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 12)
+        }
+    }
+
+    private func title(_ text: String) -> some View {
+        Text(text)
+            .font(.pretendardSemiBold(24))
+            .foregroundStyle(Color.customwhite)
+            .lineSpacing(6)
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text).font(.pretendardSemiBold(16)).foregroundStyle(Color.customwhite)
+    }
+
+    private func accountField(label: String, placeholder: String, text: Binding<String>, field: AccountField, secure: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label).font(.pretendardSemiBold(16)).foregroundStyle(Color.customwhite)
+            Group {
+                if secure {
+                    SecureField(placeholder, text: text)
+                } else {
+                    TextField(placeholder, text: text)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+            }
+            .focused($focusedField, equals: field)
+            .font(.pretendardMedium(16))
+            .foregroundStyle(Color.customwhite)
+            .padding(.horizontal, 16)
+            .frame(height: 52)
+            .background(Color._200, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func basicInfoField(
+        label: String,
+        text: Binding<String>,
+        field: AccountField,
+        keyboardType: UIKeyboardType = .default
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionLabel(label)
+            TextField("입력해주세요", text: text)
+                .focused($focusedField, equals: field)
+                .keyboardType(keyboardType)
+                .font(.pretendardMedium(16))
+                .foregroundStyle(Color.customwhite)
+                .padding(.horizontal, 16)
+                .frame(height: 52)
+                .background(Color._200, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
     private func genderButton(title: String, value: String) -> some View {
-        let isSelected = (viewModel.gender == value)
-        return Button(action: {
+        let selected = viewModel.gender == value
+        return Button {
             viewModel.gender = value
-        }) {
+        } label: {
             Text(title)
                 .font(.pretendardMedium(16))
+                .foregroundStyle(selected ? Color.customblack : Color.customwhite)
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color(._200))
-                .foregroundStyle(
-                    isSelected ?
-                    AnyShapeStyle(LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)) :
-                    AnyShapeStyle(Color(._500))
-                )
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(
-                            isSelected ? AnyShapeStyle(LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.clear),
-                            lineWidth: 1
-                        )
-                )
+                .frame(height: 50)
+                .background(selected ? gradient : AnyShapeStyle(Color._200), in: RoundedRectangle(cornerRadius: 12))
         }
     }
 
-    /// 운동 종목 태그 뷰
-    private func sportTag(title: String, id: Int) -> some View {
-        let isSelected = (selectedSportName == title)
-        return Button(action: {
-            selectedSportName = title
+    private func sportTag(id: Int, name: String) -> some View {
+        let selected = viewModel.sportId == id
+        return Button {
             viewModel.sportId = id
-        }) {
-            Text(title)
+        } label: {
+            Text(name)
                 .font(.pretendardMedium(14))
+                .foregroundStyle(selected ? gradient : AnyShapeStyle(Color.customwhite))
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color(._200))
-                .foregroundStyle(
-                    isSelected ?
-                    AnyShapeStyle(LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)) :
-                    AnyShapeStyle(Color(._500))
-                )
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(
-                            isSelected ? AnyShapeStyle(LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.clear),
-                            lineWidth: 1
-                        )
-                )
+                .frame(height: 40)
+                .background(Color._200, in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(selected ? gradient : AnyShapeStyle(Color.clear), lineWidth: 1)
+                }
         }
     }
 
-    /// 숙련도 선택 카드 뷰
-    private func proficiencyCard(badge: String, description: String, value: String) -> some View {
-        let isSelected = (viewModel.level == value)
-        return Button(action: {
-            viewModel.level = value
-        }) {
-            HStack(spacing: 12) {
+    private func proficiencyCard(_ badge: String, _ description: String, _ value: String) -> some View {
+        let selected = viewModel.level == value
+        return Button { viewModel.level = value } label: {
+            HStack(spacing: 10) {
                 Text(badge)
                     .font(.pretendardMedium(14))
-                    .foregroundStyle(isSelected ? Color("customblack") : Color(._500))
+                    .foregroundStyle(selected ? Color.customblack : Color.customwhite)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        isSelected ? AnyShapeStyle(LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color(._300))
-                    )
-                    .cornerRadius(4)
-
+                    .frame(height: 30)
+                    .background(selected ? gradient : AnyShapeStyle(Color._400), in: RoundedRectangle(cornerRadius: 6))
                 Text(description)
-                    .font(.pretendardRegular(14))
-                    .foregroundStyle(
-                        isSelected ?
-                        AnyShapeStyle(LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)) :
-                        AnyShapeStyle(Color(._500))
-                    )
-                    .multilineTextAlignment(.leading)
-
-                Spacer()
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(selected ? gradient : AnyShapeStyle(Color.customwhite))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
             }
-            .padding()
-            .background(Color(._200))
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(
-                        isSelected ? AnyShapeStyle(LinearGradient(colors: [Color("g_blue"), Color("g_mint")], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.clear),
-                        lineWidth: 1
-                    )
-            )
+            .padding(.horizontal, 12)
+            .frame(height: 54)
+            .background(Color._200, in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(selected ? gradient : AnyShapeStyle(Color.clear), lineWidth: 1)
+            }
+        }
+    }
+
+    private var regionPicker: some View {
+        Menu {
+            ForEach(Array(districts.enumerated()), id: \.element) { index, district in
+                Button(district) {
+                    viewModel.regionId = index + 1
+                }
+            }
+        } label: {
+            HStack {
+                Text(selectedDistrict ?? "선택해주세요")
+                    .font(.pretendardMedium(16))
+                    .foregroundStyle(selectedDistrict == nil ? Color._500 : Color.customwhite)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 14, weight: .light))
+                    .foregroundStyle(Color._500)
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 52)
+            .background(Color._200, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private var selectedDistrict: String? {
+        guard let id = viewModel.regionId, districts.indices.contains(id - 1) else { return nil }
+        return districts[id - 1]
+    }
+
+    private var gradient: AnyShapeStyle {
+        AnyShapeStyle(LinearGradient(colors: [.gBlue, .gMint], startPoint: .leading, endPoint: .trailing))
+    }
+
+    private var errorGradient: AnyShapeStyle {
+        AnyShapeStyle(LinearGradient(colors: [Color(red: 1, green: 0.46, blue: 0.52), Color(red: 1, green: 0.55, blue: 0.49)], startPoint: .leading, endPoint: .trailing))
+    }
+}
+
+private struct FlexibleTagLayout: Layout {
+    let spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 0
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                x = 0; y += rowHeight + spacing; rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX; y += rowHeight + spacing; rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
         }
     }
 }
 
-// MARK: - 프리뷰
 #Preview {
     OnboardingView()
         .environment(NavigationRouter())

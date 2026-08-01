@@ -7,6 +7,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(NavigationRouter.self) private var router
+    @EnvironmentObject private var container: DIContainer
     private let sports = ["테니스", "배드민턴", "농구", "축구", "헬스", "러닝", "탁구", "클라이밍", "수영"]
 
     @StateObject private var viewModel: HomeViewModel
@@ -46,6 +47,11 @@ struct HomeView: View {
         }
         .task { await viewModel.loadProfiles() }
         .onChange(of: selectedSports) { _, _ in resetCardPosition() }
+        .onChange(of: viewModel.shouldResetAuthentication) { _, shouldReset in
+            if shouldReset {
+                container.logout()
+            }
+        }
     }
 }
 
@@ -66,12 +72,18 @@ private extension HomeView {
 
             Spacer()
 
-            Image("homeProfile")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 34, height: 34)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color(._300), lineWidth: 1))
+            Button {
+                router.push(.profile)
+            } label: {
+                Image("homeProfile")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 34, height: 34)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color(._300), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("내 프로필")
         }
         .padding(.horizontal, 20)
         .frame(height: 52)
@@ -298,7 +310,7 @@ private extension HomeView {
                         endPoint: .bottomTrailing
                     )
                 ),
-                action: { /* TODO: 메이트 신청 API 연결 */ }
+                action: openMateRequestProfile
             )
         }
         .padding(.horizontal, 70)
@@ -345,6 +357,14 @@ private extension HomeView {
         }
     }
 
+    /// 신청 버튼을 누른 시점의 카드 정보를 프로필 화면으로 전달합니다.
+    /// 필터나 카드 덱의 상태가 바뀌더라도 다른 사용자의 정보가 열리지 않도록
+    /// 현재 최상단 프로필을 먼저 캡처합니다.
+    func openMateRequestProfile() {
+        guard let selectedProfile = availableProfiles.first, !isDismissingCard else { return }
+        router.push(.otherProfile(ProfileDetail(profile: selectedProfile)))
+    }
+
     func resetCardPosition() {
         cardOffset = 0
         isDismissingCard = false
@@ -352,5 +372,8 @@ private extension HomeView {
 }
 
 #Preview {
-    HomeView().preferredColorScheme(.dark)
+    HomeView()
+        .environment(NavigationRouter())
+        .environmentObject(DIContainer())
+        .preferredColorScheme(.dark)
 }

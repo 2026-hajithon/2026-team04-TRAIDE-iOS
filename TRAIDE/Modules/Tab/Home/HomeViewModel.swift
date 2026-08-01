@@ -11,6 +11,7 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var profiles: [ViewProfileRequest] = []
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var shouldResetAuthentication = false
 
     private let profileService: ProfileServiceProtocol
 
@@ -27,6 +28,10 @@ final class HomeViewModel: ObservableObject {
 
         do {
             profiles = try await profileService.fetchRecommendations()
+        } catch APIError.unauthorized {
+            shouldResetAuthentication = true
+        } catch APIError.serverError(let code, _) where code == "PROFILE_NOT_FOUND" {
+            shouldResetAuthentication = true
         } catch {
             errorMessage = "프로필을 불러오지 못했어요."
         }

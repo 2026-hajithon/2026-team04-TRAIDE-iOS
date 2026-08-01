@@ -11,10 +11,10 @@ final class SignupViewModel: ObservableObject {
 
     // MARK: - Step 2: 기본 정보
     @Published var name: String = ""
-    @Published var gender: String = "" // "MALE", "FEMALE"
+    @Published var gender: String = ""  // "MALE", "FEMALE"
     @Published var age: String = ""
 
-    // MARK: - Step 3: 운동 성향
+    // MARK: - Step 3: 필수 운동 정보
     @Published var sportId: Int? = nil
     @Published var level: String = ""  // "BEGINNER", "INTERMEDIATE", "ADVANCED"
     @Published var regionId: Int? = nil
@@ -48,20 +48,19 @@ final class SignupViewModel: ObservableObject {
             && isPasswordMatching
     }
 
-    var isBasicInfoValid: Bool {
+    var displayName: String {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty,
-              trimmedName.count <= 30,
-              !gender.isEmpty,
-              let age = Int(age) else {
-            return false
-        }
-        return (14...100).contains(age)
+        return trimmedName.isEmpty ? "사용자" : trimmedName
+    }
+
+    var isBasicInfoValid: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !gender.isEmpty
+            && ageValue != nil
     }
 
     func submitSignup() {
         let trimmedLoginId = loginId.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard isLoginInfoValid else {
             self.errorMessage = "아이디를 입력하고 비밀번호를 8자 이상으로 설정해주세요."
@@ -69,20 +68,14 @@ final class SignupViewModel: ObservableObject {
             return
         }
 
-        guard isBasicInfoValid else {
-            self.errorMessage = "이름과 성별을 입력하고 나이는 14세부터 100세 사이로 설정해주세요."
+        guard let age = ageValue, !gender.isEmpty else {
+            self.errorMessage = "이름, 성별, 나이를 모두 입력해주세요."
             self.showError = true
             return
         }
 
         guard let sportId = sportId, let regionId = regionId else {
             self.errorMessage = "종목과 지역을 모두 선택해주세요."
-            self.showError = true
-            return
-        }
-
-        guard let ageInt = Int(age) else {
-            self.errorMessage = "나이는 숫자로 입력해주세요."
             self.showError = true
             return
         }
@@ -110,8 +103,8 @@ final class SignupViewModel: ObservableObject {
                 }
 
                 let profileRequest = CreateUserProfile(
-                    name: trimmedName,
-                    age: ageInt,
+                    name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                    age: age,
                     gender: gender,
                     sportId: sportId,
                     level: level,
@@ -125,6 +118,11 @@ final class SignupViewModel: ObservableObject {
             }
             isLoading = false
         }
+    }
+
+    private var ageValue: Int? {
+        guard let value = Int(age), (1...120).contains(value) else { return nil }
+        return value
     }
 
     private func handleError(_ error: Error) {

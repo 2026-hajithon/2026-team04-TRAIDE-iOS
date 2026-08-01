@@ -20,19 +20,41 @@ class ChatViewModel: ObservableObject {
     private var listener: ListenerRegistration?
 
     let roomId: String
+    let participantName: String?
+    private let participantId: String?
 
-    init(roomId: String) {
+    init(roomId: String, participantId: String? = nil, participantName: String? = nil) {
         self.roomId = roomId
+        self.participantId = participantId
+        self.participantName = participantName
         Task { await connect() }
     }
 
     private func connect() async {
         do {
-            _ = try await FirebaseSessionService.shared.restoreSessionIfNeeded()
+            let currentUserId = try await FirebaseSessionService.shared.restoreSessionIfNeeded()
+            try await createRoomIfNeeded(currentUserId: currentUserId)
             fetchMessages()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// 프로필에서 처음 채팅을 시작한 경우에도 Firestore 규칙이 참여자를 확인할 수 있도록
+    /// 메시지 리스너를 연결하기 전에 방 문서를 생성합니다.
+    private func createRoomIfNeeded(currentUserId: String) async throws {
+        guard let participantId, participantId != currentUserId else { return }
+
+        let roomReference = db.collection("rooms").document(roomId)
+        let roomData: [String: Any] = [
+            "participants": [currentUserId, participantId],
+            "name": participantName ?? "채팅",
+            "lastMessage": "",
+            "time": "",
+            "timestamp": FieldValue.serverTimestamp(),
+            "unreadCount": 0
+        ]
+        try await roomReference.setData(roomData, merge: true)
     }
 
     private func fetchMessages() {
