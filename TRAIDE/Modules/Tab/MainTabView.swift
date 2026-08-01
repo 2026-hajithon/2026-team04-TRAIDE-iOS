@@ -11,13 +11,42 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab: TabItem = .home
+    private let chatViewModel: ChatViewModel
+
+    init(chatViewModel: ChatViewModel = .preview) {
+        self.chatViewModel = chatViewModel
+    }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        TabView(selection: $selectedTab) {
+            
+            MateView()
+                .tag(TabItem.mate)
+                .tabItem {
+                    Image(systemName: "person.2.fill")
+                    
+                    Text("메이트")
+                    
+                }
+            
+            HomeView()
+                .tag(TabItem.home)
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("홈")
+                }
 
 
 
+            ChatView(viewModel: chatViewModel)
+                .tag(TabItem.chat)
+                .tabItem {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                    Text("채팅")
+                }
         }
+        .tint(Color("g_blue"))
+        .accentColor(Color("g_blue"))
         .preferredColorScheme(.dark)
     }
 
