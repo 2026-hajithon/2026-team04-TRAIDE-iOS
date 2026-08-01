@@ -5,92 +5,100 @@
 //  Created by 김지우 on 8/1/26.
 //
 
-
 import SwiftUI
 
-/// 로그인 (스펙 2-1장)
-/// TODO:
-/// - 로그인 API 호출 연결
-/// - 아이디 찾기 / 비밀번호 찾기 / 회원가입 네비게이션 연결
-/// - 회원가입 5단계 플로우 진입점 연결
 struct LoginView: View {
-    @State private var userId: String = ""
+    @State private var id: String = ""
     @State private var password: String = ""
-
+    
+    // ⭐️ 1. 텍스트 필드의 포커스 상태를 추적하기 위한 열거형 및 상태 변수 추가
+    enum Field {
+        case id, password
+    }
+    @FocusState private var focusedField: Field?
+    
     var body: some View {
-        ZStack {
-            Color._100
-                .ignoresSafeArea()
-                .edgesIgnoringSafeArea(.all)
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 100)
-
-                Image(.logo)
-                    .resizable()
-                    .scaledToFit()
-
-                Spacer()
-                    .frame(height: 48)
-
-                VStack(spacing: 20) {
-                    TextField("아이디", text: $userId)
-                TextField("비밀번호", text: $password)
-                }
-
-                Spacer()
-                    .frame(height: 24)
-
-                MainBigButton(text: "로그인"){
-                    // TODO: 로그인 API 호출
-                }
-
-                Spacer()
-                    .frame(height: 16)
-
-                bottomLinks
-
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-        }
-    }
-
-    private var bottomLinks: some View {
-        HStack(spacing: 12) {
-            linkButton("아이디 찾기")
-                .font(.pretendardBold(12))
+        VStack(spacing: 0) {
+            Spacer()
+            
+            // MARK: - 로고 영역
+            Text("TRAIDE")
+                .font(.system(size: 56, weight: .heavy, design: .default))
+                .foregroundStyle(Color(.customwhite))
+                .padding(.bottom, 60)
+            
+            // MARK: - 입력 폼 영역
+            VStack(spacing: 16) {
+                // 아이디 입력
+                TextField("아이디", text: $id)
+                    .focused($focusedField, equals: .id) // ⭐️ 2. 포커스 바인딩
+                    .padding()
+                    .background(Color(._200))
+                    .cornerRadius(8)
+                    .foregroundStyle(Color(.customwhite))
                 
-            divider
-                .foregroundStyle(._800)
-            linkButton("비밀번호 찾기")
-            divider
-            linkButton("회원가입")
+                // 비밀번호 입력
+                SecureField("비밀번호", text: $password)
+                    .focused($focusedField, equals: .password) // ⭐️ 3. 포커스 바인딩
+                    .padding()
+                    .background(Color(._200))
+                    .cornerRadius(8)
+                    .foregroundStyle(Color(.customwhite))
+            }
+            .padding(.bottom, 30)
+            
+            // MARK: - 로그인 버튼
+            MainBigButton(
+                text: "로그인",
+                isDisabled: id.isEmpty || password.isEmpty,
+                action: {
+                    focusedField = nil // 버튼을 눌렀을 때도 키보드 내리기
+                    print("로그인 시도: \(id)")
+                    // TODO: 로그인 처리 로직 추가
+                }
+            )
+            .padding(.bottom, 24)
+            
+            // MARK: - 하단 링크 영역
+            HStack(spacing: 16) {
+                Text("아이디 찾기")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+                
+                Text("|")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+                
+                Text("비밀번호 찾기")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+                
+                Text("|")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+                
+                Button(action: {
+                    print("회원가입 화면(온보딩)으로 이동")
+                }) {
+                    Text("회원가입")
+                        .font(.pretendardMedium(14))
+                        .foregroundStyle(Color(._500))
+                }
+            }
+            
+            Spacer()
+            Spacer()
         }
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(Color._400)
-            .frame(width: 1, height: 12)
-    }
-
-    private func linkButton(_ title: String) -> some View {
-        Button {
-            // TODO: 화면 이동 연결
-        } label: {
-            Text(title)
-                .font(.pretendardBold(12))
-                .foregroundStyle(._600)
+        .padding(.horizontal, 20)
+        .background(Color(._100).ignoresSafeArea())
+        // ⭐️ 4. 빈 배경을 탭했을 때 포커스를 해제(nil)하여 키보드를 내립니다.
+        .onTapGesture {
+            focusedField = nil
         }
-        .buttonStyle(.plain)
     }
 }
 
+// MARK: - 프리뷰
 #Preview {
     LoginView()
-        .preferredColorScheme(.dark)
 }
-
-
-

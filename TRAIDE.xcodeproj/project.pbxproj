@@ -16,6 +16,7 @@
 		68E1196C301E0A43005DDE5B /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 68E1196B301E0A43005DDE5B /* FirebaseMessaging */; };
 		68E1196E301E0A43005DDE5B /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 68E1196D301E0A43005DDE5B /* FirebaseStorage */; };
 		68E11970301E0A43005DDE5B /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 68E1196F301E0A43005DDE5B /* FirebaseStorageCombine-Community */; };
+		68E11A01301E0A43005DDE5B /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 68E11A00301E0A43005DDE5B /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +58,7 @@
 				68E11966301E0A43005DDE5B /* FirebaseAuthCombine-Community in Frameworks */,
 				68E11970301E0A43005DDE5B /* FirebaseStorageCombine-Community in Frameworks */,
 				68E1196A301E0A43005DDE5B /* FirebaseInAppMessaging-Beta in Frameworks */,
+				68E11A01301E0A43005DDE5B /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,6 +110,7 @@
 				68E1196B301E0A43005DDE5B /* FirebaseMessaging */,
 				68E1196D301E0A43005DDE5B /* FirebaseStorage */,
 				68E1196F301E0A43005DDE5B /* FirebaseStorageCombine-Community */,
+				68E11A00301E0A43005DDE5B /* FirebaseFirestore */,
 			);
 			productName = TRAIDE;
 			productReference = 68E11723301E00CE005DDE5B /* TRAIDE.app */;
@@ -465,6 +468,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 68E11962301E0A43005DDE5B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = "FirebaseStorageCombine-Community";
+		};
+		68E11A00301E0A43005DDE5B /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 68E11962301E0A43005DDE5B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
