@@ -45,8 +45,19 @@ struct HomeView: View {
             }
             .scrollDisabled(cardOffset != 0)
         }
-        .task { await viewModel.loadProfiles() }
+        .task { await viewModel.loadProfiles(force: true) }
+        .refreshable {
+            dismissedProfileIDs.removeAll()
+            await viewModel.loadProfiles(force: true)
+        }
         .onChange(of: selectedSports) { _, _ in resetCardPosition() }
+        .onChange(of: container.selectedTab) { _, selectedTab in
+            guard selectedTab == .home else { return }
+            Task {
+                dismissedProfileIDs.removeAll()
+                await viewModel.loadProfiles(force: true)
+            }
+        }
         .onChange(of: viewModel.shouldResetAuthentication) { _, shouldReset in
             if shouldReset {
                 container.logout()
