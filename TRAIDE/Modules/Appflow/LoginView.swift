@@ -5,92 +5,126 @@
 //  Created by 김지우 on 8/1/26.
 //
 
-
 import SwiftUI
+import Combine
 
-/// 로그인 (스펙 2-1장)
-/// TODO:
-/// - 로그인 API 호출 연결
-/// - 아이디 찾기 / 비밀번호 찾기 / 회원가입 네비게이션 연결
-/// - 회원가입 5단계 플로우 진입점 연결
 struct LoginView: View {
-    @State private var userId: String = ""
-    @State private var password: String = ""
+    @Environment(NavigationRouter.self) private var router
+    @EnvironmentObject private var container: DIContainer
+    @StateObject private var viewModel = LoginViewModel()
+
+    enum Field {
+        case id, password
+    }
+    @FocusState private var focusedField: Field?
 
     var body: some View {
-        ZStack {
-            Color._100
-                .ignoresSafeArea()
-                .edgesIgnoringSafeArea(.all)
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 100)
+        VStack(spacing: 0) {
+            Spacer()
 
-                Image(.logo)
-                    .resizable()
-                    .scaledToFit()
+            // MARK: - 로고 영역
+            Image(.logo)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 159.32617, height: 56)
+                .tint(.customwhite)
 
-                Spacer()
-                    .frame(height: 48)
 
-                VStack(spacing: 20) {
-                    TextField("아이디", text: $userId)
-                TextField("비밀번호", text: $password)
-                }
 
-                Spacer()
-                    .frame(height: 24)
+            // MARK: - 입력 폼 영역
+            VStack(spacing: 16) {
+                // 아이디 입력
+                TextField("아이디", text: $viewModel.loginId)
+                    .focused($focusedField, equals: .id)
+                    .padding()
+                    .background(Color(._200))
+                    .cornerRadius(8)
+                    .foregroundStyle(Color(._500))
 
-                MainBigButton(text: "로그인"){
-                    // TODO: 로그인 API 호출
-                }
-
-                Spacer()
-                    .frame(height: 16)
-
-                bottomLinks
-
-                Spacer()
+                // 비밀번호 입력
+                SecureField("비밀번호", text: $viewModel.password)
+                    .focused($focusedField, equals: .password)
+                    .padding()
+                    .background(Color(._200))
+                    .cornerRadius(8)
+                    .foregroundStyle(Color(.customwhite))
             }
-            .padding(.horizontal, 20)
-        }
-    }
+            .padding(.bottom, 30)
 
-    private var bottomLinks: some View {
-        HStack(spacing: 12) {
-            linkButton("아이디 찾기")
-                .font(.pretendardBold(12))
-                
-            divider
-                .foregroundStyle(._800)
-            linkButton("비밀번호 찾기")
-            divider
-            linkButton("회원가입")
-        }
-    }
+            // MARK: - 로그인 버튼
+            MainBigButton(
+                text: "로그인",
+                isDisabled: viewModel.loginId.isEmpty || viewModel.password.isEmpty || viewModel.isLoading,
+                action: {
+                    focusedField = nil
 
-    private var divider: some View {
-        Rectangle()
-            .fill(Color._400)
-            .frame(width: 1, height: 12)
-    }
+                    viewModel.login()
+                }
+            )
+            .padding(.bottom, 24)
 
-    private func linkButton(_ title: String) -> some View {
-        Button {
-            // TODO: 화면 이동 연결
-        } label: {
-            Text(title)
-                .font(.pretendardBold(12))
-                .foregroundStyle(._600)
+            // MARK: - 하단 링크 영역
+            HStack(spacing: 16) {
+                Text("아이디 찾기")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+
+                Text("|")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+
+                Text("비밀번호 찾기")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+
+                Text("|")
+                    .font(.pretendardMedium(14))
+                    .foregroundStyle(Color(._500))
+
+                Button(action: {
+                    router.push(.onboarding)
+                }) {
+                    Text("회원가입")
+                        .font(.pretendardMedium(14))
+                        .foregroundStyle(Color(._500))
+                }
+            }
+
+            Spacer()
+            Spacer()
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
+        .background(Color(._100).ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+        }
+        // MARK: - 로딩 오버레이
+        .overlay {
+            if viewModel.isLoading {
+                Color.black.opacity(0.2)
+                    .ignoresSafeArea()
+                ProgressView()
+                    .tint(.white)
+            }
+        }
+        // MARK: - 에러 알림창
+        .alert("알림", isPresented: $viewModel.showError) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text(viewModel.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
+        }
+        // MARK: - 로그인 성공 처리
+        .onChange(of: viewModel.isLoginSuccessful) { _, isSuccess in
+            if isSuccess {
+                container.completeAuthentication()
+            }
+        }
     }
 }
 
+// MARK: - 프리뷰
 #Preview {
     LoginView()
-        .preferredColorScheme(.dark)
+        .environment(NavigationRouter())
+        .environmentObject(DIContainer())
 }
-
-
-
